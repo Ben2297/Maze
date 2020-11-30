@@ -2,6 +2,8 @@
 #include <vector>
 #include <fstream>
 #include <string>
+#include <queue>
+#include <climits>
 
 struct Position
 {
@@ -14,141 +16,92 @@ struct Position
     }
 };
 
-struct Direction
+struct Node
 {
-    Position position;
-    char dir;
+    int x, y, dist;
+    std::string route;
 };
 
-Position start, end;
-std::vector<Direction> bestPath;
 std::vector<std::vector<char>> maze;
-int noOfRows = 1;
-int noOfColumns = 1;
+std::vector<std::vector<bool>> visited;
 
-void findPath (Position currentPos, std::vector<Direction> currentPath)
+int row[] = { -1, 0, 0, 1 };
+int col[] = { 0, -1, 1, 0 };
+char directions[] = {'N', 'W', 'E', 'S'};
+
+bool isValid(int x, int y)
 {
-    std::vector<Direction> tempPath;
+    return (x >= 0) && (x < maze.size()) && (y >= 0) && (y < maze[0].size())
+           && !visited[x][y] && maze[x][y] != 'x';
+}
 
-    if (currentPos == end)
+void findPath (Position start, Position end)
+{
+    std::vector<char> prevDirections;
+    std::queue<Node> q;
+    int minDist = INT_MAX;
+
+    visited[start.x][start.y] = true;
+    q.push({start.x, start.y, 0, ""});
+
+    while (!q.empty())
     {
-        if (bestPath.empty() || currentPath.size() < bestPath.size())
+        Node node = q.front();
+        q.pop();
+
+        int i = node.x, j = node.y, dist = node.dist;
+
+        if (i == end.x && j == end.y)
         {
-            bestPath = currentPath;
+            minDist = dist;
+            std::cout << node.route << std::endl;
+            break;
         }
-        return;
-    }
 
-    if (maze[currentPos.x][currentPos.y] == 'x')
-    {
-        return;
-    }
-
-    Position temp = currentPos;
-    temp.y -= 1;
-    if (temp.y >= 0)
-    {
-        bool duplicateFound = false;
-        for (int i = 0; i < currentPath.size(); i++)
+        for (int k = 0; k < 4; k++)
         {
-            if (currentPath[i].position == currentPos)
+            if (isValid(i + row[k], j + col[k]))
             {
-                duplicateFound = true;
+                visited[i + row[k]][j + col[k]] = true;
+                prevDirections.push_back(directions[k]);
+                q.push({ i + row[k], j + col[k], dist + 1, (node.route + directions[k])});
             }
         }
-        if (!duplicateFound)
-        {
-            tempPath = currentPath;
-            tempPath.push_back(Direction{currentPos, 'W'});
-            std::cout << 'W' << std::endl;
-            findPath(temp, tempPath);
-        }
     }
 
-    temp = currentPos;
-    temp.x += 1;
-    if (temp.x < maze.size())
-    {
-        bool duplicateFound = false;
-        for (int i = 0; i < currentPath.size(); i++)
-        {
-            if (currentPath[i].position == currentPos)
-            {
-                duplicateFound = true;
-            }
-        }
-        if (!duplicateFound)
-        {
-            tempPath = currentPath;
-            tempPath.push_back(Direction{currentPos, 'S'});
-            std::cout << 'S' << std::endl;
-            findPath(temp, tempPath);
-        }
-    }
-
-    temp = currentPos;
-    temp.y += 1;
-    if (temp.y < maze[0].size())
-    {
-        bool duplicateFound = false;
-        for (int i = 0; i < currentPath.size(); i++)
-        {
-            if (currentPath[i].position == currentPos)
-            {
-                duplicateFound = true;
-            }
-        }
-        if (!duplicateFound)
-        {
-            tempPath = currentPath;
-            tempPath.push_back(Direction{currentPos, 'E'});
-            std::cout << 'E' << std::endl;
-            findPath(temp, tempPath);
-        }
-    }
-
-    temp = currentPos;
-    temp.x -= 1;
-    if (temp.x >= 0)
-    {
-        bool duplicateFound = false;
-        for (int i = 0; i < currentPath.size(); i++)
-        {
-            if (currentPath[i].position == currentPos)
-            {
-                duplicateFound = true;
-            }
-        }
-        if (!duplicateFound)
-        {
-            tempPath = currentPath;
-            tempPath.push_back(Direction{currentPos, 'N'});
-            std::cout << 'N' << std::endl;
-            findPath(temp, tempPath);
-        }
-    }
+    if (minDist != INT_MAX)
+        std::cout << "The shortest path from source to destination "
+                "has length " << minDist;
+    else
+        std::cout << "Destination can't be reached from given source";
 }
 
 int main()
 {
     std::fstream mazeFile;
+    Position start, end;
 
     mazeFile.open("quickest_route_3.txt", std::ios::in); // Opens the maze file
     char ch;
     std::vector<char> temp;
+    std::vector<bool> tempVisited;
     while (mazeFile >> std::noskipws >> ch)
     {
         if (ch == '\n')
         {
             maze.push_back(temp);
             temp.clear();
+            visited.push_back(tempVisited);
+            tempVisited.clear();
         }
         else
         {
             temp.push_back(ch);
+            tempVisited.push_back(false);
         }
     }
     maze.push_back(temp);
+    visited.push_back(tempVisited);
     mazeFile.close();
 
     for (int i = 0; i < maze.size(); i++)
@@ -168,14 +121,7 @@ int main()
         }
     }
 
-    std::vector<Direction> tempPath;
-    findPath(start, tempPath);
-
-    for (int i = 0; i < bestPath.size(); i++)
-    {
-        std::cout << bestPath[i].dir;
-    }
-    std::cout << std::endl;
+    findPath(start, end);
 
     return 0;
 }
